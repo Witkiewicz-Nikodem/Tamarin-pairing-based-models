@@ -1,4 +1,4 @@
-theory IDE_SHAMIR
+theory IBE_abstract
 begin
 functions: skk/2, encrypt/3, decrypt/2, pkk/1
 
@@ -7,27 +7,27 @@ equations: decrypt(encrypt(m, ID, pkk(msk)),skk(ID,msk)) = m
 /* Set Up */
 rule Setup:
 let 
-    pk_PKG = pkk(~ltk_PKG)
+    pk_PKG = pkk(~Ltk_PKG)
 in
-    [ Fr(~ltk_PKG) ]
-  --[Register_PKG($PKG),OnlyOnce()]->
-    [!PKG_Ltk($PKG, ~ltk_PKG), !Pk_PKG($PKG, pk_PKG), Out(pk_PKG)]
+    [ Fr(~Ltk_PKG) ]
+  --[Register_PKG($PKG)]->
+    [!PKG_Ltk($PKG, ~Ltk_PKG), !Pk_PKG($PKG, pk_PKG), Out(pk_PKG)]
 
 /* Extract */
 rule Extract:
 let
-    ltk = skk(~B,ltk_PKG)
+    ltk = skk($B,Ltk_PKG)
 in
-[!PKG_Ltk(PKG, ltk_PKG), Fr(~B)]
---[Extract(~B,ltk)]->
-[!LTK(~B,ltk), !Pk(~B), Out(~B)]
+[!PKG_Ltk(PKG, Ltk_PKG)]
+--[Extract($B,ltk)]->
+[!LTK($B,ltk), !Pk($B)]
 
 rule Encrypt:
 let 
     c = encrypt(~m,B,pk_PKG)
 in
     [Fr(~m), !Pk(B), !Pk_PKG(PKG, pk_PKG)]
-    --[Enc(~m,B)]->
+    --[Enc(B, ~m)]->
     [Out(c)]
 
 rule Decrypt:
@@ -35,18 +35,18 @@ let
     m = decrypt(c,ltk)
 in
     [!LTK(B,ltk), In(c)]
-    --[Dec(m,B)]->
+    --[Dec(B,m)]->
     []
 
-rule Reveal:
+rule Reveal_receiver:
     [!LTK(B,ltk)]
-    --[Rev(B)]->
+    --[Receiver_revealed(B)]->
     [Out(ltk)]
 
 rule Reveal_master:
-    [!PKG_Ltk(PKG, ltk_PKG)]
-    --[Rev_master()]->
-    [Out(ltk_PKG)]
+    [!PKG_Ltk(PKG, Ltk_PKG)]
+    --[Master_revealed(PKG)]->
+    [Out(Ltk_PKG)]
 
 lemma proper_execution:
     exists-trace
@@ -54,17 +54,26 @@ lemma proper_execution:
      Enc(B,m)@i &
      Dec(B,m)@j"
 
-lemma not_owner_cant_decrypt:
-    "All A ltk m #i #j.
-     Extract(A,ltk)@i
-     &Enc(A,m)@j 
-     ==> not (Ex B #k. Dec(B,m)@k)"
-
 lemma message_secrecy:
-    exists-trace
     "All B msent #i.
      Enc(B,msent)@i 
-    & not (Ex #k. Rev(B)@k)
-    & not (Ex #k. Rev_master()@k)
+    & not (Ex #k. Receiver_revealed(B)@k)
+    & not (Ex PKG #k. Master_revealed(PKG)@k)
         ==> not (Ex #j. K(msent)@j)"
+
+lemma receiver_ltk_revealed:
+/*If receiver key is compromised then adversary is able to decrypt messages*/
+    exists-trace
+    "Ex B m #i #j. Dec(B,m)@i 
+     & Enc(B,m)@j
+     & not ( Ex PKG #l. Master_revealed(PKG)@l)
+     & (Ex #m. K(m)@m)"
+
+lemma master_ltk_revealed:
+/*If master key is compromised then adversary is able to decrypt message */
+    exists-trace
+    "Ex B m #i #j. Dec(B,m)@i 
+     & Enc(B,m)@j
+     & not ( Ex B #l. Receiver_revealed(B)@l)
+     & (Ex #n. K(m)@n)"
 end

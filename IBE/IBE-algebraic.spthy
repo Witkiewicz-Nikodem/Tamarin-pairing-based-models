@@ -1,4 +1,4 @@
-theory IDE_Boneh_Franklin_2001_not_Naive
+theory IBE_algebraic
 begin
 builtins: diffie-hellman, bilinear-pairing, xor
 
@@ -23,7 +23,7 @@ let
     Ltk = pmult(Ltk_PKG,h1(~ID))
 in
     [ Fr(~ID), !PKG_Ltk($PKG, Ltk_PKG)]
-  --[Init_party($B, ~ID)]->
+  --[Extract($B, ~ID)]->
     [!Id($B, ~ID), !Ltk($B, Ltk), Out(<$B,~ID>)]
 
 /* Ecnrypt */
@@ -35,7 +35,7 @@ let
     V = ~m XOR h2(g_id^(~r))
 in
     [Fr(~r), Fr(~m), !Id(B, ID), !Pk_PKG(PKG, pk_PKG)]
-  --[Enc_message(B, ~m), Enc_Random(~r), Enc_cyphertext(<U,V>)]->
+  --[Enc(B, ~m), Enc_Random(~r), Enc_cyphertext(<U,V>)]->
     [Out(<U,V>)]
 
 /* Decrypt */
@@ -44,48 +44,48 @@ let
     m = V XOR h2(em(Ltk,U))
 in
     [In(<U,V>), !Ltk(B, Ltk)]
-  --[Dec_message(B, m)]->
+  --[Dec(B, m)]->
     []
 
 /* reveal keys rules */
 rule Reveal_receiver:
     [!Ltk(B, Ltk)]
-  --[Receiver_revealed(B, Ltk)]->
+  --[Receiver_revealed(B)]->
     [Out(<B, Ltk>)]
 
 rule Reveal_master:
     [!PKG_Ltk(PKG, Ltk_PKG)]
-  --[Master_revealed(PKG, Ltk_PKG)]->
+  --[Master_revealed(PKG)]->
     [Out(<PKG, Ltk_PKG>)]
 
-lemma protocol_executable:
+lemma proper_execution:
 /* If a trace ends with the Dec fact and the sent message equals the received message, the protocol is modeled correctly. */
     exists-trace
-    "Ex B m_sent m_received#i #j.
-     Enc_message(B, m_sent)@i & 
-     Dec_message(B, m_received)@j & 
-     m_sent = m_received"
+    "Ex B m #i #j.
+     Enc(B,m)@i &
+     Dec(B,m)@j"
 
 lemma message_secrecy:
-/*If B received and correctly Dec_message message then adversary didn't obrain the message */
-    "All B m #i #j. Dec_message(B,m)@i 
-     & Enc_message(B,m)@j
-     & not (Ex B_ltk #k. Receiver_revealed(B, B_ltk)@k) 
-     & not (Ex PKG Ltk_PKG #k. Master_revealed(PKG, Ltk_PKG)@k)
-     ==> 
-     not (Ex #m. K(m)@m)"
+/*If B received and correctly Dec message then adversary didn't obrain the message. */
+    "All B m #i #j. Dec(B,m)@i 
+     & Enc(B,m)@j
+     & not (Ex B #k. Receiver_revealed(B)@k) 
+     & not (Ex PKG #k. Master_revealed(PKG)@k)
+        ==> not (Ex #m. K(m)@m)"
 
 lemma receiver_ltk_revealed:
+/*If receiver key is compromised then adversary is able to decrypt messages*/
     exists-trace
-    "Ex B m #i #j. Dec_message(B,m)@i 
-     & Enc_message(B,m)@j
-     & not ( Ex PKG Ltk_PKG #l. Master_revealed(PKG, Ltk_PKG)@l)
+    "Ex B m #i #j. Dec(B,m)@i 
+     & Enc(B,m)@j
+     & not ( Ex PKG #l. Master_revealed(PKG)@l)
      & (Ex #m. K(m)@m)"
 
 lemma master_ltk_revealed:
+/*If master key is compromised then adversary is able to decrypt message */
     exists-trace
-    "Ex B m #i #j. Dec_message(B,m)@i 
-     & Enc_message(B,m)@j
-     & not ( Ex B_ltk #l. Receiver_revealed(B, B_ltk)@l)
+    "Ex B m #i #j. Dec(B,m)@i 
+     & Enc(B,m)@j
+     & not ( Ex B #l. Receiver_revealed(B)@l)
      & (Ex #n. K(m)@n)"
 end
