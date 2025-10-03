@@ -1,10 +1,10 @@
 # PEKS
 model is based on this paper: https://crypto.stanford.edu/~dabo/pubs/papers/encsearch.pdf.
 
-We provide algebraic and abstract models in the files named PEKS-algebraic.spthy and PEKS-abstract.spthy, respectively.
+We provide algebraic and abstract models in the files named PEKS-algebraic.spthy and PEKS-abstract.spthy, respectively. Note that they are slightly different in *Test* stage.
 
 ### lemmas
-for bothe models we prove following lemmas: 
+for both models we prove following lemmas : 
 
 * __proper_execution__ — this indicates the possibility of correct protocol exectuion. Specifically, it means that it is possible to positively check;
 
