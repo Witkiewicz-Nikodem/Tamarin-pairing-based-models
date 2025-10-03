@@ -1,0 +1,71 @@
+theory PEKS
+begin
+builtins: diffie-hellman, bilinear-pairing
+
+functions: h1/1         // from kewords to G1
+functions: h2/1         // from G2 to Zq*
+
+rule init_Receiver:
+let 
+    pk_peks = pmult(~ltk, 'g')
+in
+    [Fr(~ltk)]
+    --[Init_Receiver(~ltk, $Receiver)]->
+    [!Ltk(~ltk,$Receiver), Out(pk_peks), !Pk_peks(pk_peks, $Receiver)] // in reality PK_peks and PK_aenc are the same, but tamarin's bilinear-pairings do not fit well with asymetric encryption. it is better to use dedicated theory but then we need second public key which fits this theory.
+
+rule trapdoor:
+let 
+    Tw = pmult(ltk,h1(~W))
+in
+    [Fr(~W), !Ltk(ltk,Receiver)]
+    --[Keyword(Receiver, ~W), Trapdoor(Receiver,$Router, ~W, Tw)]->
+    [!Word(~W, Receiver), !Tw(Tw, Receiver, $Router), Out(~W)]
+
+rule PEKS:
+let
+    t = em(h1(W),pmult(~r,pk_peks))
+    A = pmult(~r,'g')
+    B = h2(t)
+in
+    [Fr(~r), !Word(W, Receiver), !Pk_peks(pk_peks, Receiver)]
+    --[PEKS(Receiver,W, ~r, A, B)]->
+    [Out(<A, B>)] 
+
+rule test_derive_sides:
+let
+    left = h2(em(Tw, A))
+    right = B
+in
+    [!Tw(Tw, Receiver, Router), In(<A,B>)]
+    --[Test_derived_sides(Router,Receiver,Tw), Test_secrecy(left, right)]->
+    [Test_derive_sides(left, right, Router,Receiver)]
+
+
+rule test_succeeded:
+    [Test_derive_sides(x, x, Router,Receiver)]
+    --[Succeeded_test(Router,Receiver), Succeeded_sides(x,x)]->
+    []
+
+rule reveal_key:
+    [!Ltk(ltk,Receiver)]
+    --[Reveal_key(Receiver)]->
+    [Out(ltk)]
+
+lemma proper_execution:
+    exists-trace
+    /*there exist trace where steps cause proper Trap door mechanism execution*/
+    "Ex Router Receiver #i.
+     Succeeded_test(Router,Receiver)@i"
+
+lemma word_secrecy:
+    "All Receiver Router W Tw r A B #i #j. PEKS(Receiver,W, r, A, B)@i 
+    & Trapdoor(Receiver, Router, W, Tw)@j
+    & not (Ex #k. Reveal_key(Receiver)@k)
+    ==> not(Ex #k. K(Tw)@k)"
+
+lemma Tw_compromise:
+    exists-trace
+    "Ex Receiver Router W Tw #i. 
+    Trapdoor(Receiver, Router, W, Tw)@i
+    & (Ex #k. K(Tw)@k)"
+end

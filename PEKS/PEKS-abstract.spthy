@@ -1,0 +1,65 @@
+theory PEKS
+begin
+
+functions: pub_key/1, peks/2, testt/3, trapdoor/2, true/0, false/0
+
+equations:
+    testt(pub_key(ltk), peks(pub_key(ltk), W), trapdoor(ltk, W)) =  true
+    
+
+rule init_Receiver:
+let 
+    pk = pub_key(~ltk)
+in
+    [Fr(~ltk)]
+    --[Init_Receiver(~ltk, $Receiver)]->
+    [!Ltk(~ltk,$Receiver), Out(pk), !Pk(pk, $Receiver)] 
+
+rule trapdoor:
+let 
+    Tw = trapdoor(ltk, ~W)
+in
+    [Fr(~W), !Ltk(ltk,Receiver)]
+    --[Keyword(Receiver, ~W), Trapdoor(Receiver,$Router, ~W, Tw)]->
+    [!Word(~W, Receiver), !Tw(Tw, Receiver, $Router), Out(~W)]
+
+rule PEKS:
+let
+    peks = peks(pk, W)
+in
+    [!Word(W, Receiver), !Pk(pk, Receiver)]
+    --[PEKS(Receiver, W)]->
+    [Out(peks)] 
+
+rule test:
+let
+    result = testt(pk, S, Tw )
+in
+    [!Tw(Tw, Receiver, Router), In(S), !Pk(pk, Receiver)]
+    --[Test_derived_sides(Router,Receiver,Tw), Test_result(result)]->
+    [Test_derive_sides(result, Router,Receiver)]
+
+rule reveal_key:
+    [!Ltk(ltk,Receiver)]
+    --[Reveal_key(Receiver)]->
+    [Out(ltk)]
+
+lemma proper_execution:
+    exists-trace
+    /*there exist trace where steps cause proper Trap door mechanism execution*/
+    "Ex #i.
+     Test_result(true)@i"
+
+lemma word_secrecy:
+    "All Receiver Router W Tw #i #j. PEKS(Receiver,W)@i 
+    & Trapdoor(Receiver, Router, W, Tw)@j
+    & not (Ex #k. Reveal_key(Receiver)@k)
+    ==> not(Ex #k. K(Tw)@k)"
+
+lemma word_compromise:
+    exists-trace
+    "Ex Receiver Router W Tw #i #j. 
+    Trapdoor(Receiver, Router, W, Tw)@i
+    & Reveal_key(Receiver)@j
+    & (Ex #k. K(Tw)@k)"
+end
