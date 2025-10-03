@@ -1,0 +1,70 @@
+theory IDE_SHAMIR
+begin
+functions: skk/2, encrypt/3, decrypt/2, pkk/1
+
+equations: decrypt(encrypt(m, ID, pkk(msk)),skk(ID,msk)) = m
+
+/* Set Up */
+rule Setup:
+let 
+    pk_PKG = pkk(~ltk_PKG)
+in
+    [ Fr(~ltk_PKG) ]
+  --[Register_PKG($PKG),OnlyOnce()]->
+    [!PKG_Ltk($PKG, ~ltk_PKG), !Pk_PKG($PKG, pk_PKG), Out(pk_PKG)]
+
+/* Extract */
+rule Extract:
+let
+    ltk = skk(~B,ltk_PKG)
+in
+[!PKG_Ltk(PKG, ltk_PKG), Fr(~B)]
+--[Extract(~B,ltk)]->
+[!LTK(~B,ltk), !Pk(~B), Out(~B)]
+
+rule Encrypt:
+let 
+    c = encrypt(~m,B,pk_PKG)
+in
+    [Fr(~m), !Pk(B), !Pk_PKG(PKG, pk_PKG)]
+    --[Enc(~m,B)]->
+    [Out(c)]
+
+rule Decrypt:
+let 
+    m = decrypt(c,ltk)
+in
+    [!LTK(B,ltk), In(c)]
+    --[Dec(m,B)]->
+    []
+
+rule Reveal:
+    [!LTK(B,ltk)]
+    --[Rev(B)]->
+    [Out(ltk)]
+
+rule Reveal_master:
+    [!PKG_Ltk(PKG, ltk_PKG)]
+    --[Rev_master()]->
+    [Out(ltk_PKG)]
+
+lemma proper_execution:
+    exists-trace
+    "Ex B m #i #j.
+     Enc(B,m)@i &
+     Dec(B,m)@j"
+
+lemma not_owner_cant_decrypt:
+    "All A ltk m #i #j.
+     Extract(A,ltk)@i
+     &Enc(A,m)@j 
+     ==> not (Ex B #k. Dec(B,m)@k)"
+
+lemma message_secrecy:
+    exists-trace
+    "All B msent #i.
+     Enc(B,msent)@i 
+    & not (Ex #k. Rev(B)@k)
+    & not (Ex #k. Rev_master()@k)
+        ==> not (Ex #j. K(msent)@j)"
+end
