@@ -1,0 +1,103 @@
+theory blind_sig_with_Oracle
+
+begin
+
+functions:  h1/1, 
+            blind/2, 
+            blindsig/2, 
+            sig/2, 
+            ver/3, 
+            pkk/1, 
+            true/0,
+            get_m/1 [private],
+            get_ltk/1 [private],
+            get_r/1 [private],
+            unsig/2
+equations:
+    ver(sig(m,ltk), pkk(ltk), m) = true,
+    get_m(blindsig(blind(r,m),ltk)) = m,
+    get_ltk(blindsig(blind(r,m),ltk)) = ltk,
+    get_r(blindsig(blind(r,m),ltk)) = r,
+    //unsig(sig(m,ltk),ltk) = m     
+    
+rule Init_Signer:
+let
+    pk = pkk(~ltk)
+in
+    [Fr(~ltk)]
+  --[]->
+    [!Ltk(~ltk,$Signer), Out(pk), !Pk(pk, $Signer)]
+
+rule Blinding:
+let
+    hm = h1(~m)
+    M = blind(~r,hm)
+in
+    [Fr(~r), Fr(~m)]
+  --[Blind(M), Blind_m(~m), Blind_hm(hm)]->
+    [Out(M), !Issuer_r($Issuer, ~r), !Issuer_m($Issuer, ~m)]
+
+rule Signing:
+let
+    signed = blindsig(M,ltk)
+in
+    [In(M), !Ltk(ltk,Signer)]
+  --[Signed(M,Signer)]->
+    [Out(signed)]
+
+rule Oracle_unblind_sig:
+let
+    hm = get_m(blindsig)
+    ltk = get_ltk(blindsig)
+    r = get_r(blindsig)
+    sig = sig(hm, ltk)
+in
+    [In(blindsig), !Issuer_r(Issuer, r)]
+  --[Sign(sig)]->
+    [Out(sig)]
+
+rule Verify:
+let 
+    result = ver(sig, pk, h1(m))
+in
+    [In(sig), !Pk(pk,Signer), !Issuer_m(Issuer, m)]
+  --[Verify(result), Verify_m(m), Verify_sig(Signer)]->
+    []
+
+rule Reveal_key:
+    [!Ltk(ltk,Signer)]
+  --[Reveal_key(Signer)]->
+    [Out(ltk)]
+
+rule Reveal_r:
+    [!Issuer_r(Issuer, r)]
+  --[Reveal_r(Issuer, r)]->
+    [Out(r)]
+
+
+lemma executable:
+    exists-trace
+    /*there exist trace where steps leads to proper signing and verification*/
+    "Ex #i. Verify(true)@i"
+
+lemma secrecy:
+    "All m hm #i #j. 
+      Verify_m(m)@i 
+    & Blind_m(m)@j
+    & Blind_hm(hm)@j
+    & not (Ex Issuer r #k. Reveal_r(Issuer, r)@k)
+    ==> not(Ex #k1 #k2. K(m)@k1 & K(hm)@k2 & k1 < i)"
+
+lemma non_repudiation:
+    " All Signer m M #i #j. 
+      Verify_m(m)@i
+    & Verify_sig(Signer)@i
+    & Verify(true)@i
+    & Blind_m(m)@j
+    & Blind(M)@j
+    & (not Ex #k. Reveal_key(Signer)@k)
+    & not (Ex Issuer r #k. Reveal_r(Issuer, r)@k)
+    ==> 
+    Ex #k. Signed(M, Signer)@k
+    " 
+end

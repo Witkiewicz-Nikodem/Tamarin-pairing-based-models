@@ -1,0 +1,92 @@
+theory blind_sig_func
+
+begin
+
+functions: 
+          h1/1, 
+          blind/2, 
+          signn/2, 
+          unsign/3, 
+          blind_sign/3, 
+          unblind/2, 
+          verifyy/3, 
+          pkk/1, 
+          reveal/2, 
+          true/0
+equations:
+    verifyy(unblind(signn(blind(r,m),ltk), r), pkk(ltk), m) = true,
+rule Init_Signer:
+let
+    pk = pkk(~ltk)
+in
+    [Fr(~ltk)]
+  --[]->
+    [!Ltk(~ltk,$Signer), Out(pk), !Pk(pk, $Signer)]
+
+rule Blinding:
+let
+    M = blind(~r,h1(~m))
+in
+    [Fr(~r), Fr(~m)]
+  --[Blind(M), Blinded(~m, h1(~m))]->
+    [Out(M), !Issuer_r($Issuer, ~r), !Issuer_m($Issuer, ~m)]
+
+rule Signing:
+let
+    signed = signn(M,ltk)
+in
+    [In(M), !Ltk(ltk,Signer)]
+  --[Signed(M,Signer)]->
+    [Out(signed)]
+
+rule Unblinding: 
+let
+    signature = unblind(signed, r)
+in
+    [In(signed), !Issuer_r(Issuer, r)]
+  --[]->
+    [Out(signature), Signature(signature)]
+
+rule Verify:
+let 
+    result = verifyy(signature, pk, h1(m))
+in
+    [In(signature), !Pk(pk,Signer), !Issuer_m(Issuer, m)]
+  --[Verify(result), Verify_m(m), Verify_sig(Signer)]->
+    []
+
+rule Reveal_key:
+    [!Ltk(ltk,Signer)]
+  --[Reveal_key(Signer)]->
+    [Out(ltk)]
+
+rule Reveal_r:
+    [!Issuer_r(Issuer, r)]
+  --[Reveal_r(Issuer, r)]->
+    [Out(r)]
+
+lemma executable:
+    exists-trace
+    /*there exist trace where steps cause proper signing and verification*/
+    "Ex #i. Verify(true)@i"
+
+lemma secrecy:
+    "All m hm #i #j. 
+      Verify_m(m)@i 
+    & Blinded(m, hm)@j
+    & not (Ex Issuer r #k. Reveal_r(Issuer, r)@k)
+    ==> not(Ex #k1 #k2. K(m)@k1  & K(hm)@k2 & k1 < i & k2 <j)"
+
+lemma non_repudiation:
+    " All Signer m hm M #i #j. 
+      Verify_m(m)@i
+    & Verify_sig(Signer)@i
+    & Verify(true)@i
+    & Blinded(m, hm)@j
+    & Blind(M)@j
+    & (not Ex #k. Reveal_key(Signer)@k)
+    & not (Ex Issuer r #k. Reveal_r(Issuer, r)@k)
+    ==> 
+    Ex #k. Signed(M, Signer)@k
+    " 
+end
