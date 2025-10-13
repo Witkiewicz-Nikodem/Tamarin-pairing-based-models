@@ -1,6 +1,6 @@
 # IBE
 model is based on this paper: https://eprint.iacr.org/2001/090.pdf.
-We provide algebraic and abstract models in the files named IBE-algebraic.spthy and IBE-abstract.spthy, respectively.
+We provide algberaic and abstrac models in files respectively IBE-algebraic.spthy and IBE-abstract.spthy
 
 ### lemmas
 for both models we prove following lemmas:

@@ -1,0 +1,153 @@
+theory IDE_SHAMIR
+begin
+builtins: natural-numbers
+
+functions: skk/2, encrypt/3, decrypt/2, pkk/1
+
+equations: 
+    decrypt(encrypt(m, ID, pkk(msk)), skk(ID,msk)) = m,
+
+/* Set Up */
+rule Register_Root:
+let 
+    pk_Root = pkk(~ltk_Root)
+in
+    [Fr(~ltk_Root) ]
+  --[Register_Root($Root, ~ltk_Root), OnlyOnce()]->
+    [!Root_Ltk($Root, ~ltk_Root), !Pk_Root($Root, pk_Root), Out(pk_Root)]
+
+/* Extract */
+rule Register_Entity_Root:
+let 
+    all_ID = ~ID
+    sk = skk(all_ID, ltk_Root)
+in
+    [!Root_Ltk($Root, ltk_Root), Fr(~ID)]
+  --[Entity_Registered(all_ID, %1), Entity_sk(sk)]-> 
+    [!Entity_skey(all_ID, sk), !Entity_PK(all_ID, %1), Out(~ID)]
+
+
+rule Register_Entity_Entity:
+let
+    all_ID = <~ID,parent_ID>
+    sk = skk(all_ID, ltk_Root)
+in
+    [!Entity_PK(parent_ID, %n), Fr(~ID), !Root_Ltk($Root, ltk_Root)]
+  --[Entity_Registered(all_ID, %n %+ %1), Child_parent_action(all_ID, parent_ID)]->
+    [!Entity_skey(all_ID, sk), !Entity_PK(all_ID, %n %+ %1), !Child_parent(all_ID, parent_ID), !Entity_Root(all_ID, %n %+ %1), Out(all_ID)]
+
+/* Encryption */
+rule Enc:
+let 
+    c = encrypt(~m, all_ID, pk_Root)
+in
+    [Fr(~m), !Entity_PK(all_ID, %n), !Pk_Root($Root, pk_Root)]
+    --[Encrypted(~m), Enc_ID(all_ID)]->
+    [Out(c)]
+
+/* Decryption */
+
+rule Dec:
+let 
+    m = decrypt(encrypted,ltk)
+in
+    [In(encrypted),!Entity_skey(all_ID, ltk)]
+    --[Decrypted(m), Dec_ID(all_ID)]->
+    []
+/* Reveal mechanism */
+rule Reveal_root:
+    [!Root_Ltk(Root, ltk_Root)]
+  --[Root_Ltk_Revealed(Root)]->
+    [Out(ltk_Root)]
+
+rule reveal_Entity_key:
+    [!Entity_skey(ID, sk)]
+  --[Skey_revealed(ID), Skey_unique(ID)]->
+    [Out(sk), !Dec_key(ID)]
+
+rule reveal_Entity_secret:
+    [!Entity_skey(ID, sk)]
+  --[Secret_revealed(ID)]->
+    [!Secret(ID)]
+
+rule deduce_child_skeys: 
+    [!Dec_key(parent_ID), !Secret(parent_ID), !Child_parent(child_ID, parent_ID), !Entity_skey(child_ID, child_skey)]
+  --[Deduce_skey(child_ID), Skey_revealed(child_ID)]->
+    [!Dec_key(child_ID), Out(child_skey)]
+
+rule deduce_parent_secret:
+    [!Dec_key(parent_ID), !Dec_key(child_ID), !Child_parent(child_ID, parent_ID)]
+  --[Deduced_secret(parent_ID), Secret_revealed(parent_ID)]->
+    [!Secret(parent_ID)]
+
+rule deduce_parent_skey:
+    [!Secret(parent_ID), !Dec_key(child_ID), !Child_parent(child_ID, parent_ID), !Entity_skey(parent_ID, parent_skey)]
+  --[Deduce_skey(parent_ID), Skey_revealed(parent_ID)]->
+    [!Dec_key(parent_skey), Out(parent_skey)]
+
+
+/* 
+    Entity existance
+*/
+
+lemma proper_decryption_entity1:
+    exists-trace
+    "Ex ID m #i #j #k.
+          Decrypted(m)@i & Dec_ID(ID)@i
+        & Encrypted(m)@j & Enc_ID(ID)@j
+        & Entity_Registered(ID, %1 )@k
+     "
+lemma proper_decryption_entity2:
+    exists-trace
+    "Ex ID m #i #j #k.
+          Decrypted(m)@i & Dec_ID(ID)@i
+        & Encrypted(m)@j & Enc_ID(ID)@j
+        & Entity_Registered(ID, %1 %+ %1)@k
+     "
+
+
+/*
+    secrecy lemmas
+*/
+
+
+lemma skey_not_deducable:
+    "All E1 E2 E3 #i #j.
+     Child_parent_action(E2,E3)@i
+     & Child_parent_action(E1,E2)@j
+     & not (Ex E4 #k. Child_parent_action(E4,E2)@k & not E4 = E1)
+     & not (Ex #k. Skey_revealed(E3)@k)
+     & not (Ex #k. Skey_revealed(E1)@k)
+        ==> not (Ex #k. Deduce_skey(E2)@k)"
+
+lemma secret_not_deducable:
+    "All E1 E2 E3 #i #j.
+     Child_parent_action(E2,E3)@i
+     & Child_parent_action(E1,E2)@j
+     & not (Ex E4 #k. Child_parent_action(E4,E2)@k & not E4 = E1)
+     & not (Ex #k. Skey_revealed(E2)@k)
+     & not (Ex #k. Skey_revealed(E1)@k)
+        ==> not (Ex #k. Deduced_secret(E2)@k)"
+
+
+lemma Deduce_skey:
+    "All m E2 #i.
+     Encrypted(m)@i & Enc_ID(E2)@i
+    & not (Ex Root #k. Root_Ltk_Revealed(Root)@k)
+    & not (Ex #k. Skey_unique(E2)@k)
+    ==> not (Ex #k. K(m)@k)"
+
+
+lemma message_secrecy:
+    "All msent #i.
+       Encrypted(msent)@i 
+     & not (Ex ID #k. Skey_revealed(ID)@k) 
+     & not (Ex Root #k. Root_Ltk_Revealed(Root)@k)
+    ==> not (Ex #j. K(msent)@j)"
+
+
+restriction OnlyOnce:
+    "All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j"
+
+end
+

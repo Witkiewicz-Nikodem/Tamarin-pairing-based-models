@@ -1,0 +1,206 @@
+theory HIDE
+begin
+builtins: natural-numbers, asymmetric-encryption
+
+// szyfrowanie bierze m, ID i klucz publiczny oracle - zamiast klucza publicznego roota
+// oracle mając klucz prywatny jest wstanie wyodrbęnić, wiadomość oraz ID.
+
+
+// funkcję będą musiały działać tak, że kolejne klucze są możliwe do odzyskania równaniami albo iteracyjnie. To sprawia że przy ujawnieniu klucza atakujący będzie mógł sobie odzyskać klucze rodziców. Więc klucze do oracla wysyłane są w postaci zaszyfrowanej. Jeśli zostaje ujawniony klucz to też w postaci zaszyfrowanej więc atakjący nei może go odzyskać.
+
+/* Set Up */
+rule Root_init:
+    [ Fr(~St) ]
+  --[Root_init($Root), OnlyOnce()]->
+    [!Root_St($Root, ~St)]
+
+/* Extract */
+
+// zmien potem fresh ID na public ID
+rule Register_Entity_Root:
+let 
+    Pt = <~ID>
+    St = <~Sk, R_St>
+in
+    [!Root_St($Root, R_St), Fr(~ID), Fr(~Sk)]
+  --[Entity_Registered(Pt), Child_parent_action(Pt, $Root), Entity_counter(%1)]-> 
+    [!Entity_St(Pt, St), !Entity_Pt(Pt), !Entity_ctr(Pt,%1), Out(~ID)]
+
+
+rule Register_Entity_Entity:
+let
+    Pt = <~ID, Parent_Pt>
+    St = <~Sk, Parent_St>
+in
+    [!Entity_St(Parent_Pt, Parent_St), Fr(~ID), Fr(~Sk), !Entity_Pt(Parent_Pt), !Entity_ctr(Parent_Pt, %n)]
+  --[Entity_Registered(Pt), Child_parent_action(Pt, Parent_Pt), Entity_counter(%n %+ %1)]->
+    [!Entity_St(Pt, St), !Child_parent(Pt, Parent_Pt), !Entity_Pt(Pt), !Entity_ctr(Pt,%n %+ %1), Out(~ID)]
+
+rule Init_Oracle:
+let
+    pk = pk(~ltk)
+in
+    [Fr(~ltk)]
+    --[OnlyOnce_oracle(), Oracle_init(~ltk)]->
+    [!Oracle_ltk(~ltk), !Oracle_pk(pk), Out(pk)]
+
+/* Encryption */
+rule Enc:
+let 
+    cm = aenc(~m, pk)
+    c = <cm, Pt>
+in
+    [Fr(~m), !Entity_Pt(Pt), !Oracle_pk(pk)]
+    --[Encrypted(~m), Enc_ID(Pt)]->
+    [Out(c)]
+
+rule Dec_init:
+let
+    m = adec(cm, ltk)
+    Receiver = Pt
+in
+ [In(<cm, Pt>), !Oracle_ltk(ltk), !Entity_St(Pt, St)]
+ --[Dec_init(Receiver), Dec_init_m(m)]->
+ [Dec_step(m,Receiver, Pt, St)]
+
+rule Dec_step:
+ [Dec_step(m,Receiver,<Pt,parent_Pt>,<St,parent_St>), !Entity_St(parent_Pt, parent_St)]
+--[Dec_step_action()]->
+ [Dec_step(m,Receiver,parent_Pt,parent_St)]
+
+rule Dec_final:
+ [Dec_step(m,Receiver,<parent_Pt>,<St,Root_st>), !Root_St(Root, Root_st)]
+--[Dec_finish_action(Receiver), Decrypted(m)]->
+ [Dec(Receiver,m)]
+
+rule Dec_init_malicious:
+let
+    m = adec(cm, ltk)
+    Pt = adec(cp, ltk)
+    St = adec(cSt, ltk)
+    Receiver = Pt
+in
+ [In(<cm, cp>), In(cSt), !Oracle_ltk(ltk), !Entity_St(Pt, St)]
+ --[Dec_init_malicious(Receiver,m), Dec_init_m(m)]->
+ [Dec_step_malicious(m,Receiver, Pt, St)]
+
+rule Dec_step_malicious:
+ [Dec_step_malicious(m,Receiver,<Pt,parent_Pt>,<St,parent_St>), !Entity_St(parent_Pt, parent_St)]
+--[Dec_step_action_malicious(Receiver,m)]->
+ [Dec_step_malicious(m,Receiver,parent_Pt,parent_St)]
+
+rule Dec_final_malicious:
+ [Dec_step_malicious(m,Receiver,<parent_Pt>,<St,Root_st>), !Root_St(Root, Root_st)]
+--[Dec_finish_action_malicious(Receiver,m), Decrypted_malicious(m)]->
+ [Out(m)]
+
+rule reveal_Entity_key:
+    [!Entity_St(ID, sk) ,!Oracle_pk(pk)]
+  --[Skey_revealed(ID), Skey_unique(ID)]->
+    [Out(aenc(sk,pk)), !Dec_key(ID)]
+
+rule reveal_Entity_secret:
+    [!Entity_St(ID, sk)]
+  --[Secret_revealed(ID)]->
+    [!Secret(ID)]
+
+rule deduce_child_skeys: 
+    [!Dec_key(parent_ID), !Secret(parent_ID), !Child_parent(child_ID, parent_ID), !Entity_St(child_ID, child_skey), !Oracle_pk(pk)]
+  --[Deduce_skey(child_ID), Deduce_child_skey(child_ID), Skey_revealed(child_ID)]->
+    [!Dec_key(child_ID), Out(aenc(child_skey,pk))]
+
+rule deduce_parent_secret:
+    [!Dec_key(parent_ID), !Dec_key(child_ID), !Child_parent(child_ID, parent_ID)]
+  --[Deduced_secret(parent_ID), Secret_revealed(parent_ID)]->
+    [!Secret(parent_ID)]
+
+rule deduce_parent_skey:
+    [!Secret(parent_ID), !Dec_key(child_ID), !Child_parent(child_ID, parent_ID), !Entity_St(parent_ID, parent_skey), !Oracle_pk(pk)]
+  --[Deduce_skey(parent_ID), Deduce_parent_skey(parent_ID), Skey_revealed(parent_ID)]->
+    [!Dec_key(parent_skey), Out(aenc(parent_skey,pk))]
+
+
+lemma Oracle_finish_ex_1:
+    exists-trace
+    "Ex ID Pt m  #i #j #k #l. Entity_Registered(ID)@i & Entity_counter(%1)@i
+     &Enc_ID(Pt)@j & Encrypted(m)@j
+     &Dec_init(Pt)@k & Dec_init_m(m)@k
+     &Dec_finish_action(Pt)@l & Decrypted(m)@l"
+
+lemma Oracle_finish_ex_2:
+    exists-trace
+    "Ex ID Pt m  #i #j #k #l. Entity_Registered(ID)@i & Entity_counter(%1 %+ %1)@i
+     &Enc_ID(Pt)@j & Encrypted(m)@j
+     &Dec_init(Pt)@k & Dec_init_m(m)@k
+     &Dec_finish_action(Pt)@l & Decrypted(m)@l"
+
+lemma skey_not_deducable:
+    "All E1 E2 E3 #i #j.
+     Child_parent_action(E2,E3)@i
+     & Child_parent_action(E1,E2)@j
+     & not (Ex E4 #k. Child_parent_action(E4,E2)@k & not E4 = E1)
+     & not (Ex #k. Skey_revealed(E3)@k)
+     & not (Ex #k. Skey_revealed(E1)@k)
+        ==> not (Ex #k. Deduce_skey(E2)@k)"
+
+lemma secret_not_deducable:
+    "All E1 E2 E3 #i #j.
+     Child_parent_action(E2,E3)@i
+     & Child_parent_action(E1,E2)@j
+     & not (Ex E4 #k. Child_parent_action(E4,E2)@k & not E4 = E1)
+     & not (Ex #k. Skey_revealed(E2)@k)
+     & not (Ex #k. Skey_revealed(E1)@k)
+        ==> not (Ex #k. Deduced_secret(E2)@k)"
+
+lemma Deduce_child_skey:
+    exists-trace
+    "Ex E2 #i #j.
+     Enc_ID(E2)@i
+    & Deduce_child_skey(E2)@j" 
+
+lemma Deduce_parent_skey:
+    exists-trace
+    "Ex E2 #i #j.
+     Enc_ID(E2)@i
+    & Deduce_parent_skey(E2)@j" 
+
+lemma Deduce_secret:
+    exists-trace
+    "Ex E2 #i #j.
+     Enc_ID(E2)@i
+    & Secret_revealed(E2)@j"
+
+
+
+
+
+
+
+lemma message_secrecy:
+    "All msent #i.
+       Encrypted(msent)@i 
+     & not (Ex ID #k. Skey_revealed(ID)@k) 
+    ==> not (Ex #j. K(msent)@j)"
+
+
+lemma auxiliary_compromise[use_induction,reuse]:
+    "All ID m #i.
+    Dec_step_action_malicious(ID,m)@i
+     ==> Ex #j. Dec_init_malicious(ID,m)@j"
+
+lemma message_compromise[use_induction,reuse]:
+    exists-trace
+    "Ex m ID #i #j #k.
+     Encrypted(m)@i & Enc_ID(ID)@i 
+    & Dec_init_m(m)@j
+    & Decrypted_malicious(m)@k" 
+
+
+restriction OnlyOnce_oracle:
+    "All #i #j. OnlyOnce_oracle()@i & OnlyOnce_oracle()@j ==> #i = #j"
+
+restriction OnlyOnce:
+    "All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j"
+
+end
+
