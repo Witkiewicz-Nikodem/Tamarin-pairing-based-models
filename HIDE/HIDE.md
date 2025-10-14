@@ -1,14 +1,14 @@
 # HIDE
 Model is based on basic HIDE from this paper: https://eprint.iacr.org/2002/056.pdf. 
 
-Abstract model is impossible to cuntruct, becouse HIDE needs to perform point addition, what is not possible to model. Therefore We focused on abstract modeling. We provide 2 models. First one models HIDE in standard way and second one introduces modeling with oracle. 
+Algebraic model is impossible to cuntruct, becouse HIDE needs to perform point addition, what is not possible in Tamarin. Therefore We focused on abstract modeling. We provide 2 models. First one models HIDE in standard way and second one introduces modeling with oracle. 
 
 Probably there is a way to improve model using private functions for key chain verification.
 ## notes on modeling BASIC HIDE
-* public keys do not depend on corresponding private keys but on <ID, ancestors_ID>.
+* public keys do not depend on corresponding private keys but on chain ID: <ID, ancestors_ID>.
 
-* private keys are composed by ancestors secrets and public keys. The most important property is that key $S_t$, is chained with all ancestors $S_i$ and $s_i$. this together with encryption and decryption algorithms ensure that only a party who's key was evalueated using secrets corresponding with ID's used to produce public key is able to decrypr message. In other words, if somebody is able to decrypt message then:
-    * he posses a proper key.
+* private keys are composed by ancestors secrets and public keys. The most important property is that key $S_t$, is chained with all ancestors $S_i$ and $s_i$. this together with encryption and decryption algorithms ensure that only a party who's key was evalueated using secrets corresponding with ID's used to produce public key is able to decrypt message. In other words, if somebody is able to decrypt message then:
+    * he posses a proper private key.
     * The key was constructed by his parrent.
     * the parent's key was constructed by grand parent and so on and so forth until we reach root.
     * looking from leaf perspective, they are all chained with root.
@@ -51,20 +51,67 @@ We provide lemmas under one restriction: we consider that there is only one root
 
 We added a tree depth counter to the entity structer and use it only in lemmas.
 
-## executable
+#### executable
 We provide 2 lemmas to check decryption correctness. There are two rules which create entities. Thereby there are two categories of entity, so We provde lemmas for both od them.
 * __proper_decryption_entity1__ — There exists trace, in which decryption is reached.  (first category — root is entities parent)
 
 * __proper_decryption_entity2__ — There exists trace, in which decryption is reached.  (second category — entity is entities parent)
 
-## key reveal
+#### key reveal
 Here we cover two lemma examples in which secret or key deduction is not possible. We also provide one example where key is deducable.
 * __skey_not_deducable__   — in some conditions it is possible to deduce key.
 * __secret_not_deducable__ — in some conditions it is possible to deduce secret.
-* __Deduce_skey__ — in some conditions it is not possible to deduce key.
+* __Deduce_child_skey__ —  it is possible to reach *deduce_child_skeys* rule;
+* __Deduce_parent_skey__ — it is possible to reach *deduce_parent_secret* rule;
+* __Deduce_secret__ — it is possible to reach *deduce_parent_skey* rule;
 
-## secrecy
+#### secrecy
 * __message_secrecy__ — If a party's ltk and the Root ltk weren't compromised, then an adversary is not able to posses a message encrypted with the party's identity.
 
 
 ## Abstract oracle model
+Model using orcale is quite similar to previous one. It construct tree structer in the same fashion, excluding private keys generation. Moreover key reveal mechanism is exactly the same. However Encrypion and decryption are modeled in different way. Unlike first model we attempted to model composed private key - private key is generated using private keys of it's ancestors. Therefore, the decryption process may check whether the private key is composed of the private keys coresponding to public keys used to decrypt message.
+
+Before using this model, please read note about message_compromise lemma limitation. You will find the note at the end of this file.
+
+### tree structure key generation
+Private key is, actually list of private keys corresponding to Identyficators used to construct publick key.
+$Pk = <Pk_1, Pk_2, ... , Pk_n>$
+$Sk = <Sk_0, Sk_1, ..., Sk_n>$, where 0 is index of Root.
+
+### Encryption and Decryption
+
+#### Oracle in HIDE
+The main idea is to use a oracle to model decryption. We use the name oracle to clearly distinguish that it is a black box from parties perspective. Oracle rules models decryption by honest parties, as well as adversary. Honest parties and adversary communicate with Oracle using channel (In, Out).
+* Honest parties comunicate with Oracle using asymmetric encryption, so adversary is not able to poses any secret or private key. 
+* Adversary communicate with Oracle without any encryption, just plain text.
+Therefore, we provide relevant rules for both scenarios, so that honest parties and the adversary are able to decrypt message under circumstances suitable for their respective roles.
+
+#### Iterative Decryption
+Decryption must be applicable to parties at any level of tree depth. For this reason, decryption rules iteratively checks if subsequent $Pk_i$ and $Sk_i$ comes from the same party. If so then decryption is possible, otherwise decryption trace break.
+
+### lemmas
+We used --auto-sources to prove following lemmas. 
+
+#### executable
+We provide 2 lemmas to check decryption correctness. There are two rules which create entities. Thereby there are two categories of entity, so We provde lemmas for both od them.
+* __proper_decryption_entity1__ — There exists trace, in which decryption is reached.  (first category — root is entities parent)
+
+* __proper_decryption_entity2__ — There exists trace, in which decryption is reached.  (second category — entity is entities parent)
+
+#### key reveal
+Here we cover two lemma examples in which secret or key deduction is not possible. We also provide three examples (for each equation) where key is deducable.
+
+* __skey_not_deducable__   — in some conditions (there are lot, please read lemma in code) it is not possible to deduce key;
+* __secret_not_deducable__ — in some conditions (there are lot, please read lemma in code) it is not possible to deduce secret;
+* __Deduce_child_skey__ —  it is possible to reach *deduce_child_skeys* rule;
+* __Deduce_parent_skey__ — it is possible to reach *deduce_parent_secret* rule;
+* __Deduce_secret__ — it is possible to reach *deduce_parent_skey* rule;
+
+
+#### message secrecy
+* __message_secrecy__ if receiver private key wasn't revealed or deduced then message is secret;
+* __message_compromise__ if there are no restrcitions on key revealing then message will be available in unsecure channel. Note that in second part of the sentence we don't say "adversary will posses message". It is caused by a performance issues. Namely if we added to lemma *& (Ex #l. K(m)@l)*, then Tamarin couldn't find a prove. We lost patience after a few hours of waiting. In our model both cases are equal from logic perspective but in protocols where HIDE is component it would probably be usfull to be able to prove *& (Ex #l. K(m)@l)* statement.
+
+## note on tree depth
+We provided model for unbounded tree depth. If your protocol has a limit for tree depth, you should include this in your model to improve proving efficency.

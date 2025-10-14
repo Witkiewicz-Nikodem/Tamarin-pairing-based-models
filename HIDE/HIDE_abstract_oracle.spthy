@@ -1,6 +1,6 @@
-theory HIDE
+theory HIDE_abstract_oracle
 begin
-builtins: natural-numbers, asymmetric-encryption
+builtins: asymmetric-encryption
 
 // szyfrowanie bierze m, ID i klucz publiczny oracle - zamiast klucza publicznego roota
 // oracle mając klucz prywatny jest wstanie wyodrbęnić, wiadomość oraz ID.
@@ -23,8 +23,8 @@ let
     St = <~Sk, R_St>
 in
     [!Root_St($Root, R_St), Fr(~ID), Fr(~Sk)]
-  --[Entity_Registered(Pt), Child_parent_action(Pt, $Root), Entity_counter(%1)]-> 
-    [!Entity_St(Pt, St), !Entity_Pt(Pt), !Entity_ctr(Pt,%1), Out(~ID)]
+  --[Entity_Registered(Pt), Child_parent_action(Pt, $Root), E_Root()]-> 
+    [!Entity_St(Pt, St), !Entity_Pt(Pt), Out(~ID)]
 
 
 rule Register_Entity_Entity:
@@ -32,9 +32,9 @@ let
     Pt = <~ID, Parent_Pt>
     St = <~Sk, Parent_St>
 in
-    [!Entity_St(Parent_Pt, Parent_St), Fr(~ID), Fr(~Sk), !Entity_Pt(Parent_Pt), !Entity_ctr(Parent_Pt, %n)]
-  --[Entity_Registered(Pt), Child_parent_action(Pt, Parent_Pt), Entity_counter(%n %+ %1)]->
-    [!Entity_St(Pt, St), !Child_parent(Pt, Parent_Pt), !Entity_Pt(Pt), !Entity_ctr(Pt,%n %+ %1), Out(~ID)]
+    [!Entity_St(Parent_Pt, Parent_St), Fr(~ID), Fr(~Sk), !Entity_Pt(Parent_Pt)]
+  --[Entity_Registered(Pt), Child_parent_action(Pt, Parent_Pt), E_E()]->
+    [!Entity_St(Pt, St), !Child_parent(Pt, Parent_Pt), !Entity_Pt(Pt), Out(~ID)]
 
 rule Init_Oracle:
 let
@@ -59,18 +59,18 @@ let
     m = adec(cm, ltk)
     Receiver = Pt
 in
- [In(<cm, Pt>), !Oracle_ltk(ltk), !Entity_St(Pt, St)]
- --[Dec_init(Receiver), Dec_init_m(m)]->
- [Dec_step(m,Receiver, Pt, St)]
+ [In(<cm, Pt>), !Oracle_ltk(ltk), !Entity_St(Pt, St), Fr(~tid)]
+ --[Dec_init(Receiver), Dec_init_m(m), Dec_init_tid(~tid)]->
+ [Dec_step(m,Receiver, Pt, St, ~tid)]
 
 rule Dec_step:
- [Dec_step(m,Receiver,<Pt,parent_Pt>,<St,parent_St>), !Entity_St(parent_Pt, parent_St)]
---[Dec_step_action()]->
- [Dec_step(m,Receiver,parent_Pt,parent_St)]
+ [Dec_step(m,Receiver,<Pt,parent_Pt>,<St,parent_St>, tid), !Entity_St(parent_Pt, parent_St)]
+--[Dec_step_action(tid)]->
+ [Dec_step(m,Receiver,parent_Pt,parent_St,tid)]
 
 rule Dec_final:
- [Dec_step(m,Receiver,<parent_Pt>,<St,Root_st>), !Root_St(Root, Root_st)]
---[Dec_finish_action(Receiver), Decrypted(m)]->
+ [Dec_step(m,Receiver,<parent_Pt>,<St,Root_st>, tid), !Root_St(Root, Root_st)]
+--[Dec_finish_action(Receiver), Decrypted(m), Dec_init_tid(tid)]->
  [Dec(Receiver,m)]
 
 rule Dec_init_malicious:
@@ -120,16 +120,16 @@ rule deduce_parent_skey:
     [!Dec_key(parent_skey), Out(aenc(parent_skey,pk))]
 
 
-lemma Oracle_finish_ex_1:
+lemma proper_decryption_entity1:
     exists-trace
-    "Ex ID Pt m  #i #j #k #l. Entity_Registered(ID)@i & Entity_counter(%1)@i
+    "Ex Pt m  #i #j #k #l. Entity_Registered(Pt)@i & E_Root()@i
      &Enc_ID(Pt)@j & Encrypted(m)@j
      &Dec_init(Pt)@k & Dec_init_m(m)@k
      &Dec_finish_action(Pt)@l & Decrypted(m)@l"
 
-lemma Oracle_finish_ex_2:
+lemma proper_decryption_entity2:
     exists-trace
-    "Ex ID Pt m  #i #j #k #l. Entity_Registered(ID)@i & Entity_counter(%1 %+ %1)@i
+    "Ex Pt m  #i #j #k #l. Entity_Registered(Pt)@i & E_E()@i
      &Enc_ID(Pt)@j & Encrypted(m)@j
      &Dec_init(Pt)@k & Dec_init_m(m)@k
      &Dec_finish_action(Pt)@l & Decrypted(m)@l"
@@ -170,12 +170,6 @@ lemma Deduce_secret:
      Enc_ID(E2)@i
     & Secret_revealed(E2)@j"
 
-
-
-
-
-
-
 lemma message_secrecy:
     "All msent #i.
        Encrypted(msent)@i 
@@ -188,12 +182,13 @@ lemma auxiliary_compromise[use_induction,reuse]:
     Dec_step_action_malicious(ID,m)@i
      ==> Ex #j. Dec_init_malicious(ID,m)@j"
 
-lemma message_compromise[use_induction,reuse]:
+lemma message_compromise[use_induction]:
     exists-trace
     "Ex m ID #i #j #k.
      Encrypted(m)@i & Enc_ID(ID)@i 
     & Dec_init_m(m)@j
-    & Decrypted_malicious(m)@k" 
+    & Decrypted_malicious(m)@k
+    & (Ex #l. K(m)@l)" 
 
 
 restriction OnlyOnce_oracle:

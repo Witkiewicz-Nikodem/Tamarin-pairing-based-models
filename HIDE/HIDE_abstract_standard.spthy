@@ -1,4 +1,4 @@
-theory IDE_SHAMIR
+theory HIDE_abstract_standard
 begin
 builtins: natural-numbers
 
@@ -72,7 +72,7 @@ rule reveal_Entity_secret:
 
 rule deduce_child_skeys: 
     [!Dec_key(parent_ID), !Secret(parent_ID), !Child_parent(child_ID, parent_ID), !Entity_skey(child_ID, child_skey)]
-  --[Deduce_skey(child_ID), Skey_revealed(child_ID)]->
+  --[Deduce_skey(child_ID), Skey_revealed(child_ID), Deduce_child_skey(child_ID)]->
     [!Dec_key(child_ID), Out(child_skey)]
 
 rule deduce_parent_secret:
@@ -82,7 +82,7 @@ rule deduce_parent_secret:
 
 rule deduce_parent_skey:
     [!Secret(parent_ID), !Dec_key(child_ID), !Child_parent(child_ID, parent_ID), !Entity_skey(parent_ID, parent_skey)]
-  --[Deduce_skey(parent_ID), Skey_revealed(parent_ID)]->
+  --[Deduce_skey(parent_ID), Skey_revealed(parent_ID), Deduce_parent_skey(parent_ID)]->
     [!Dec_key(parent_skey), Out(parent_skey)]
 
 
@@ -130,13 +130,23 @@ lemma secret_not_deducable:
         ==> not (Ex #k. Deduced_secret(E2)@k)"
 
 
-lemma Deduce_skey:
-    "All m E2 #i.
-     Encrypted(m)@i & Enc_ID(E2)@i
-    & not (Ex Root #k. Root_Ltk_Revealed(Root)@k)
-    & not (Ex #k. Skey_unique(E2)@k)
-    ==> not (Ex #k. K(m)@k)"
+lemma Deduce_child_skey:
+    exists-trace
+    "Ex E2 #i #j.
+     Enc_ID(E2)@i
+    & Deduce_child_skey(E2)@j" 
 
+lemma Deduce_parent_skey:
+    exists-trace
+    "Ex E2 #i #j.
+     Enc_ID(E2)@i
+    & Deduce_parent_skey(E2)@j" 
+
+lemma Deduce_secret:
+    exists-trace
+    "Ex E2 #i #j.
+     Enc_ID(E2)@i
+    & Secret_revealed(E2)@j"
 
 lemma message_secrecy:
     "All msent #i.
