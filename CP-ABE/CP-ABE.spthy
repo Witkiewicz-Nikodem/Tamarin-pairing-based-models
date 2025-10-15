@@ -1,0 +1,139 @@
+theory ABE_final
+/*
+roles:
+trusted_authority - generates keys, and atributes
+sender - encrypt messages and send to reciever using common channel
+reciever - recieves private key, encrypted message and decrypt it.
+
+
+One public key corresponds to two private keys.
+
+it does not differ from  multiple aenc...
+*/
+
+begin
+
+functions: aenc_abe_1/4, adec_abe_1/2, aenc_abe_2/3, adec_abe_2/2, att/1, sk1/1, sk2/2  
+equations: 
+    // I Assume that keys always occur in order ltk1, ltk2, ltk3
+    // policy 1, ltk1
+    adec_abe_1(aenc_abe_1(m, att(ltk1),att(ltk2),att(ltk3)),sk1(ltk1)) = m,
+    adec_abe_1(aenc_abe_1(m, att(ltk1),att(ltk2),att(ltk3)),sk2(ltk1, x)) = m,
+
+    // policy 1, ltk2 and ltk3
+    adec_abe_1(aenc_abe_1(m, att(ltk1),att(ltk2),att(ltk3)),sk2(ltk2,ltk3)) = m,
+
+    // policy 2, ltk1 or ltk2
+    // policy 2, ltk1
+    adec_abe_2(aenc_abe_2(m, att(ltk1), att(ltk2)), sk1(ltk1)) = m,
+    adec_abe_2(aenc_abe_2(m, att(ltk1), att(ltk2)), sk2(ltk1,x)) = m,
+
+    // policy 2, ltk2
+    adec_abe_2(aenc_abe_2(m, att(ltk1), att(ltk2)), sk1(ltk2)) = m,
+    adec_abe_2(aenc_abe_2(m, att(ltk1), att(ltk2)), sk2(ltk2,x)) = m,
+
+rule key_gen:
+let
+    att1 = att(~ltk1)
+    att2 = att(~ltk2)
+    att3 = att(~ltk3)
+
+    //policyX_role_Y_ltk
+    // policy 1
+    l1 = sk1(~ltk1)
+    l2 = sk1(~ltk2)
+    l3 = sk1(~ltk3)
+    l12 = sk2(~ltk1, ~ltk2)
+    l13 = sk2(~ltk1, ~ltk3)
+    l23 = sk2(~ltk2, ~ltk3)
+    // mixed
+in
+  [Fr(~ltk1), Fr(~ltk2), Fr(~ltk3), Fr(~L1), Fr(~L2), Fr(~L3), Fr(~L12), Fr(~L13), Fr(~L23)]
+--[L1(~L1),L2(~L2),L3(~L3),L12(~L12),L13(~L13),L23(~L23), OnlyOnce()]->
+  [!LTK(~L1, l1), !LTK(~L2, l2), !LTK(~L3, l3), !LTK(~L12, l12), !LTK(~L13, l13), !LTK(~L23, l23), !Attributes(att1,att2,att3), Out(<att1,att2,att3>), Out(<~L1,~L2,~L3,~L12,~L13,~L23>)]
+
+/*
+    encrypt
+*/
+
+rule encrypt_P1:
+let
+    c = aenc_abe_1(~m,att1,att2,att3)
+in
+
+  [Fr(~m), !Attributes(att1,att2,att3)]
+--[Enc(~m)]->
+  [Out(c)]
+
+rule encrypt_P2:
+let
+    c = aenc_abe_2(~m,att1,att2)
+in
+
+  [Fr(~m), !Attributes(att1,att2,att3)]
+--[Enc(~m)]->
+  [Out(c)]
+
+/*
+    Decrypt
+*/
+
+rule Policy_1:
+let
+    m = adec_abe_1(c,ltk)
+in
+    [In(c), !LTK(Receiver,ltk)]
+  --[Dec1(m, Receiver)]->
+    []
+
+rule Policy_2:
+let
+    m = adec_abe_2(c,ltk)
+in
+    [In(c), !LTK(Receiver,ltk)]
+  --[Dec2(m, Receiver)]->
+    []
+
+/*
+    Reveal
+*/
+
+
+rule Reveal:
+    [!LTK(Receiver,ltk)]
+  --[LTK_reavealed(Receiver, ltk)]->
+    [Out(ltk)]
+
+lemma P1_all_dec_ex:
+    exists-trace    
+    "Ex m L1 L12 L13 L23 #i1 #i12 #i13 #i23 #j #k1 #k12 #k13 #k23.
+     L1(L1)@i1 & L12(L12)@i12 & L13(L13)@i13 & L23(L23)@i23 
+    &Enc(m)@j
+    &Dec1(m,L1)@k1
+    &Dec1(m,L12)@k12
+    &Dec1(m,L13)@k13
+    &Dec1(m,L23)@k23
+    "
+
+lemma P2_all_dec_ex:
+    exists-trace
+    "Ex m L1 L12 L13 L2 L23 #i1 #i12 #i13 #i2 #i23 #j #k1 #k12 #k13 #k2 #k23.
+     L1(L1)@i1 & L12(L12)@i12 & L13(L13)@i13 & L2(L2)@i2 & L23(L23)@i23
+    &Enc(m)@j
+    &Dec2(m,L1)@k1
+    &Dec2(m,L12)@k12
+    &Dec2(m,L13)@k13
+    &Dec2(m,L2)@k2
+    &Dec2(m,L23)@k23
+    "
+
+lemma secrecy:
+    "All m  #i. 
+     Enc(m)@i
+    &not (Ex R ltk #k. LTK_reavealed(R,ltk)@k)
+    ==> not (Ex #k. K(m)@k)"
+
+restriction TA_onlyOnce:
+    "All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j"
+end
+
