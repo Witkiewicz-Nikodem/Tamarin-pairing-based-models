@@ -49,6 +49,7 @@ one defined:
 1. the minial set of attributes;
 2. maximum amount of attributes associated with key - (later we will call it key length);
 3. order of attributes;
+
 is ready to construct equations. Each set is analised according to all possible key lenght.
 given minimal set of n attributes and maximum key length m we construct equations as shown below:
 
