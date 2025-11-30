@@ -62,7 +62,7 @@ rule Reveal_root:
 
 rule reveal_Entity_key:
     [!Entity_skey(ID, sk)]
-  --[Skey_revealed(ID), Skey_unique(ID)]->
+  --[Skey_revealed(ID), Skey_unique_reveal(ID)]->
     [Out(sk), !Dec_key(ID)]
 
 rule reveal_Entity_secret:
@@ -155,6 +155,15 @@ lemma message_secrecy:
      & not (Ex Root #k. Root_Ltk_Revealed(Root)@k)
     ==> not (Ex #j. K(msent)@j)"
 
+lemma message_compromise:
+/* proven with deduction*/
+exists-trace
+    "Ex m ID x #i #j. 
+     Entity_Registered(ID,x)@i
+     & Encrypted(m)@j & Enc_ID(ID)@j 
+     & not (Ex #k. Skey_unique_reveal(ID)@k)
+     & not (Ex Root #k. Root_Ltk_Revealed(Root)@k)
+     & Ex #k. K(m)@k"
 
 restriction OnlyOnce:
     "All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j"

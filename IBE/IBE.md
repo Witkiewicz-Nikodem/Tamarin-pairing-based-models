@@ -7,8 +7,8 @@ for both models we prove following lemmas:
 
 * __proper_execution__ — This indicates the possibility of correct protocol execution. Specifically, it means that it is possible to decrypt a message using the party's private key that corresponds to the public key used to decrypt message;
 
-* __message_secrecy__ — If B received and correctly Dec message then adversary didn't obrain the message;
+* __message_secrecy__ — If B sent encrypted message and both Receiver's secret key and Master's secrete key weren't revealed then adversary is not able to obtain message;
 
-* __receiver_ltk_revealed__ — If receiver key is compromised then adversary is able to decrypt messages;
+* __receiver_ltk_revealed__ — If receiver's key is compromised then adversary is able to decrypt messages;
 
-* __master_ltk_revealed__ — If master key is compromised then adversary is able to decrypt message.
+* __master_ltk_revealed__ — If Master's key is compromised then adversary is able to decrypt message.

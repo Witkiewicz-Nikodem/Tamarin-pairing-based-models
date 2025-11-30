@@ -1,8 +1,15 @@
 theory IBE_abstract
 begin
-functions: skk/2, encrypt/3, decrypt/2, pkk/1
 
-equations: decrypt(encrypt(m, ID, pkk(msk)),skk(ID,msk)) = m
+
+
+        functions: pkk/1,
+                   skk/2, 
+                   encrypt/3, 
+                   decrypt/2, 
+
+
+        equations: decrypt(encrypt(m, ID, pkk(msk)),skk(ID,msk)) = m
 
 /* Set Up */
 rule Setup:
@@ -60,7 +67,7 @@ lemma message_secrecy:
     & not (Ex #k. Receiver_revealed(B)@k)
     & not (Ex PKG #k. Master_revealed(PKG)@k)
         ==> not (Ex #j. K(msent)@j)"
-
+             
 lemma receiver_ltk_revealed:
 /*If receiver key is compromised then adversary is able to decrypt messages*/
     exists-trace

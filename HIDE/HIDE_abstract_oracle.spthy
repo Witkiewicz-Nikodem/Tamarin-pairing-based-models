@@ -183,6 +183,7 @@ lemma auxiliary_compromise[use_induction,reuse]:
      ==> Ex #j. Dec_init_malicious(ID,m)@j"
 
 lemma message_compromise[use_induction]:
+/* can't prove it */
     exists-trace
     "Ex m ID #i #j #k.
      Encrypted(m)@i & Enc_ID(ID)@i 
