@@ -2,7 +2,7 @@
 model is based on this paper: https://eprint.iacr.org/2001/090.pdf.
 We provide algberaic and abstrac models in files respectively IBE-algebraic.spthy and IBE-abstract.spthy. 
 
-We also provide proof for abstract model that adversary can't distinguish two cyphertexts despite he knows what messages were used to evaluate cyphertexts. The proof is in IBE-abs-obs-eq.spthy file. We tried to do the same with algebraic model but it proof is computationally too complex.
+We also provide proof for abstract model that adversary can't distinguish two cyphertexts despite he knows what messages were used to evaluate cyphertexts. The proof is in IBE-abs-obs-eq.spthy file. We tried to do the same with algebraic model but it's proof is computationally too complex.
 
 ### lemmas
 for both models we prove following lemmas:

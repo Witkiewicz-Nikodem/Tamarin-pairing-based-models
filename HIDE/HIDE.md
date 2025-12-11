@@ -113,9 +113,10 @@ Here we cover two lemma examples in which secret or key deduction is not possibl
 * __message_secrecy__ if receiver private key wasn't revealed or deduced then message is secret;
 * __message_compromise__ if there are no restrcitions on key revealing then message will be available in unsecure channel. Note that in second part of the sentence we don't say "adversary will posses message". It is caused by a performance issues. Namely if we added to lemma *& (Ex #l. K(m)@l)*, then Tamarin couldn't find a prove. We lost patience after a few hours of waiting. In our model both cases are equal from logic perspective but in protocols where HIDE is component it would probably be usfull to be able to prove *& (Ex #l. K(m)@l)* statement.
 
+#### observational equivalence
+We tried to prove that adversary can't distinguish two cyphertexts despite he knows what messages were used to evaluate cyphertexts. However Tamarin exit computions with error caused by exceeding Available 16GB RAM. 
+
 ## note on tree depth
 We provided model for unbounded tree depth. If your protocol has a limit for tree depth, you should include this in your model to improve proving efficency.
 
 
-#### observational equivalence
-We tried to prove that adversary can't distinguish two cyphertexts despite he knows what messages were used to evaluate cyphertexts. However Tamarin exit computions with error caused by exceeding Available 16GB RAM. 
