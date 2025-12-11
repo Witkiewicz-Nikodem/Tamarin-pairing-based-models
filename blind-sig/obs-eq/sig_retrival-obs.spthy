@@ -1,0 +1,58 @@
+theory blind_sig_with_Oracle
+
+begin
+
+functions:  h1/1, 
+            blind/2, 
+            blindsig/2, 
+            sig/2, 
+            // ver/3, 
+            pkk/1, 
+            get_m/1 [private],
+            get_ltk/1 [private],
+            get_r/1 [private],
+            unsig/2
+equations:
+    //ver(sig(m,ltk), pkk(ltk), m) = true,
+    get_m(blindsig(blind(r,m),ltk)) = m,
+    get_ltk(blindsig(blind(r,m),ltk)) = ltk,
+    get_r(blindsig(blind(r,m),ltk)) = r,
+    //unsig(sig(m,ltk),ltk) = m     
+    
+rule Init_Signer:
+let
+    pk = pkk(~ltk)
+in
+    [Fr(~ltk)]
+  --[]->
+    [!Ltk(~ltk,$Signer), Out(pk), !Pk(pk, $Signer)]
+
+rule Blinding:
+let
+    m = diff('A','B')
+    M = blind(~r,h1(m))
+in
+    [Fr(~r)]
+  --[Blind(M), Blind_m(m), Blind_hm(h1(m))]->
+    [Out(M), !Issuer_r($Issuer, ~r), !Issuer_m($Issuer, m)]
+
+rule Signing:
+let
+    signed = blindsig(M,ltk)
+in
+    [In(M), !Ltk(ltk,Signer)]
+  --[Signed(M,Signer)]->
+    [Out(signed)]
+
+//rule Oracle_unblind_sig:
+//let
+//    hm = get_m(blindsig)
+//    ltk = get_ltk(blindsig)
+//    r = get_r(blindsig)
+//    sig = sig(hm, ltk)
+//in
+//    [In(blindsig), !Issuer_r(Issuer, r)]
+//  --[Sign(sig)]->
+//    [Out(sig)]
+
+end

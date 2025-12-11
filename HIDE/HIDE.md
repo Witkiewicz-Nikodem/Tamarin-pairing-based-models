@@ -115,3 +115,7 @@ Here we cover two lemma examples in which secret or key deduction is not possibl
 
 ## note on tree depth
 We provided model for unbounded tree depth. If your protocol has a limit for tree depth, you should include this in your model to improve proving efficency.
+
+
+#### observational equivalence
+We tried to prove that adversary can't distinguish two cyphertexts despite he knows what messages were used to evaluate cyphertexts. However Tamarin exit computions with error caused by exceeding Available 16GB RAM. 

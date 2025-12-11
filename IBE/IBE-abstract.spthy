@@ -1,15 +1,12 @@
 theory IBE_abstract
 begin
 
+functions: pkk/1,
+           skk/2, 
+           encrypt/4, 
+           decrypt/2 
 
-
-        functions: pkk/1,
-                   skk/2, 
-                   encrypt/3, 
-                   decrypt/2, 
-
-
-        equations: decrypt(encrypt(m, ID, pkk(msk)),skk(ID,msk)) = m
+equations: decrypt(encrypt(m, ID, pkk(msk),r),skk(ID,msk)) = m
 
 /* Set Up */
 rule Setup:
@@ -31,9 +28,9 @@ in
 
 rule Encrypt:
 let 
-    c = encrypt(~m,B,pk_PKG)
+    c = encrypt(~m,B,pk_PKG,~r)
 in
-    [Fr(~m), !Pk(B), !Pk_PKG(PKG, pk_PKG)]
+    [Fr(~m), !Pk(B), !Pk_PKG(PKG, pk_PKG), Fr(~r)]
     --[Enc(B, ~m)]->
     [Out(c)]
 

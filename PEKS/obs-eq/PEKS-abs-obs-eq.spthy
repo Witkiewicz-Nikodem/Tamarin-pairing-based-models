@@ -1,0 +1,34 @@
+theory PEKS_abstract_observatinal_equivalence
+begin
+
+functions: pub_key/1, peks/3, testt/3, trapdoor/2, true/0, false/0
+
+equations:
+    testt(pub_key(ltk), peks(pub_key(ltk), W, r), trapdoor(ltk, W)) =  true
+    
+
+rule init_Receiver:
+let 
+    pk = pub_key(~ltk)
+in
+    [Fr(~ltk)]
+    --[Init_Receiver(~ltk, $Receiver)]->
+    [!Ltk(~ltk,$Receiver), Out(pk), !Pk(pk, $Receiver)] 
+
+rule trapdoor:
+    [Fr(~W1), Fr(~W2), !Ltk(ltk,Receiver)]
+    --[Keyword(Receiver, ~W1, ~W2)]->
+    [!Word(~W1, Receiver), Out(<~W1, ~W2>)]
+
+rule PEKS:
+let
+    W = diff(W1,W2)
+    peks = peks(pk, W, ~r)
+in
+    [!Word(W1, Receiver), !Word(W2, Receiver), !Pk(pk, Receiver), Fr(~r)]
+    --[PEKS(Receiver, W)]->
+    [Out(peks)] 
+
+
+
+end

@@ -68,4 +68,6 @@ lemma Tw_compromise:
     "Ex Receiver Router W Tw #i. 
     Trapdoor(Receiver, Router, W, Tw)@i
     & (Ex #k. K(Tw)@k)"
+
+
 end

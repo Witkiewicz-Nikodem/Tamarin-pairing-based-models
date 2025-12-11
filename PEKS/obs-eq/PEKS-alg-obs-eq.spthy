@@ -1,0 +1,35 @@
+theory PEKS_algebraic_observatinal_equivalence
+begin
+builtins: diffie-hellman, bilinear-pairing
+
+functions: h1/1         // from kewords to G1
+functions: h2/1         // from G2 to Zq*
+
+rule init_Receiver:
+let 
+    pk_peks = pmult(~ltk, 'g')
+in
+    [Fr(~ltk)]
+    --[Init_Receiver(~ltk, $Receiver)]->
+    [!Ltk(~ltk,$Receiver), Out(pk_peks), !Pk_peks(pk_peks, $Receiver)] // in reality PK_peks and PK_aenc are the same, but tamarin's bilinear-pairings do not fit well with asymetric encryption. it is better to use dedicated theory but then we need second public key which fits this theory.
+
+rule trapdoor:
+let 
+    Tw = pmult(ltk,h1(~W))
+in
+    [Fr(~W), !Ltk(ltk,Receiver)]
+    --[Keyword(Receiver, ~W)]->
+    [!Word(~W, Receiver), Out(~W)]
+
+rule PEKS:
+let
+    W = diff(W1,W2)
+    t = em(h1(W),pmult(~r,pk_peks))
+    A = pmult(~r,'g')
+    B = h2(t)
+in
+    [Fr(~r), !Word(W1, Receiver),!Word(W2, Receiver), !Pk_peks(pk_peks, Receiver)]
+    --[PEKS(Receiver,W, ~r, A, B)]->
+    [Out(<A, B>)] 
+
+end

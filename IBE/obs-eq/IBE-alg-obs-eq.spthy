@@ -1,0 +1,44 @@
+theory IBE_algebraic_observatinal_equivalence
+begin
+builtins: diffie-hellman, bilinear-pairing, xor
+
+functions: h1/1
+functions: h2/1
+
+
+/*Set Up */
+
+rule Set_up:
+let 
+    pk_PKG = pmult(~Ltk_PKG, 'P')
+in
+    [ Fr(~Ltk_PKG) ]
+  --[Register_PKG($PKG), OnlyOnce()]->
+    [!PKG_Ltk($PKG, ~Ltk_PKG), !Pk_PKG($PKG, pk_PKG), Out(pk_PKG)]
+
+/* Extract */
+rule Extract:
+let
+    Ltk = pmult(Ltk_PKG,h1(~ID))
+in
+    [ Fr(~ID), !PKG_Ltk($PKG, Ltk_PKG)]
+  --[Extract($B, ~ID)]->
+    [!Id($B, ~ID), !Ltk($B, Ltk), Out(<$B,~ID>)]
+
+/* Ecnrypt */
+rule Enc:
+let
+    m = diff('A', 'B')
+    PK = h1(ID)
+    g_id = em(PK, pk_PKG)
+    U = pmult(~r,'P')
+    V = m XOR h2(g_id^(~r))
+in
+    [Fr(~r),!Id(B, ID), !Pk_PKG(PKG, pk_PKG)]
+  --[Enc(B, m), Enc_Random(~r), Enc_cyphertext(<U,V>)]->
+    [Out(<U,V>)]
+
+restriction OnlyOnce:
+"All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j"
+
+end

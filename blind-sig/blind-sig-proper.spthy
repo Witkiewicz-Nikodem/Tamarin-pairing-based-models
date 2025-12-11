@@ -6,12 +6,9 @@ functions:
           h1/1, 
           blind/2, 
           signn/2, 
-          unsign/3, 
-          blind_sign/3, 
           unblind/2, 
           verifyy/3, 
           pkk/1, 
-          reveal/2, 
           true/0
 equations:
     verifyy(unblind(signn(blind(r,m),ltk), r), pkk(ltk), m) = true,

@@ -199,4 +199,3 @@ restriction OnlyOnce:
     "All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j"
 
 end
-

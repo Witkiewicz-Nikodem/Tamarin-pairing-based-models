@@ -19,30 +19,31 @@ in
 /* Extract */
 rule Register_Entity_Root:
 let 
-    all_ID = ~ID
-    sk = skk(all_ID, ltk_Root)
+    child_ID = ~ID
+    sk = skk(child_ID, ltk_Root)
 in
     [!Root_Ltk($Root, ltk_Root), Fr(~ID)]
-  --[Entity_Registered(all_ID, %1), Entity_sk(sk)]-> 
-    [!Entity_skey(all_ID, sk), !Entity_PK(all_ID, %1), Out(~ID)]
+  --[Entity_Registered(child_ID, %1), Entity_sk(sk)]-> 
+    [!Entity_skey(child_ID, sk), !Entity_PK(child_ID, %1), Out(~ID)]
 
 
 rule Register_Entity_Entity:
 let
-    all_ID = <~ID,parent_ID>
-    sk = skk(all_ID, ltk_Root)
+    child_ID = ~ID
+    sk = skk(child_ID, ltk_Root)
 in
     [!Entity_PK(parent_ID, %n), Fr(~ID), !Root_Ltk($Root, ltk_Root)]
-  --[Entity_Registered(all_ID, %n %+ %1), Child_parent_action(all_ID, parent_ID)]->
-    [!Entity_skey(all_ID, sk), !Entity_PK(all_ID, %n %+ %1), !Child_parent(all_ID, parent_ID), !Entity_Root(all_ID, %n %+ %1), Out(all_ID)]
+  --[Entity_Registered(child_ID, %n %+ %1), Child_parent_action(child_ID, parent_ID)]->
+    [!Entity_skey(child_ID, sk), !Entity_PK(child_ID, %n %+ %1), !Child_parent(child_ID, parent_ID), !Entity_Root(child_ID, %n %+ %1), Out(child_ID)]
 
 /* Encryption */
 rule Enc:
 let 
-    c = encrypt(~m, all_ID, pk_Root)
+    m = diff('A', 'B')
+    c = encrypt(m, child_ID, pk_Root, ~r)
 in
-    [Fr(~m), !Entity_PK(all_ID, %n), !Pk_Root($Root, pk_Root)]
-    --[Encrypted(~m), Enc_ID(all_ID)]->
+    [Fr(m), !Entity_PK(child_ID, %n), !Pk_Root($Root, pk_Root), Fr(~r)]
+    --[Encrypted(m), Enc_ID(child_ID)]->
     [Out(c)]
 
 /* Decryption */
@@ -51,8 +52,8 @@ rule Dec:
 let 
     m = decrypt(encrypted,ltk)
 in
-    [In(encrypted),!Entity_skey(all_ID, ltk)]
-    --[Decrypted(m), Dec_ID(all_ID)]->
+    [In(encrypted),!Entity_skey(child_ID, ltk)]
+    --[Decrypted(m), Dec_ID(child_ID)]->
     []
 /* Reveal mechanism */
 rule Reveal_root:
@@ -105,7 +106,6 @@ lemma proper_decryption_entity2:
         & Entity_Registered(ID, %1 %+ %1)@k
      "
 
-
 /*
     secrecy lemmas
 */
@@ -156,7 +156,7 @@ lemma message_secrecy:
     ==> not (Ex #j. K(msent)@j)"
 
 lemma message_compromise:
-/* proven with deduction*/
+/* we assume deduction here*/
 exists-trace
     "Ex m ID x #i #j. 
      Entity_Registered(ID,x)@i
@@ -167,6 +167,5 @@ exists-trace
 
 restriction OnlyOnce:
     "All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j"
-
 end
 

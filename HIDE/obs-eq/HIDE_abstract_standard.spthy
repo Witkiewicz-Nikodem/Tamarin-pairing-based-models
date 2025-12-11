@@ -1,0 +1,53 @@
+theory HIDE_abstract_standard
+begin
+builtins: natural-numbers
+
+functions: skk/2, encrypt/4, decrypt/2, pkk/1
+
+equations: 
+    decrypt(encrypt(m, ID, pkk(msk),r), skk(ID,msk)) = m,
+
+/* Set Up */
+rule Register_Root:
+let 
+    pk_Root = pkk(~ltk_Root)
+in
+    [Fr(~ltk_Root) ]
+  --[Register_Root($Root, ~ltk_Root), OnlyOnce()]->
+    [!Root_Ltk($Root, ~ltk_Root), !Pk_Root($Root, pk_Root), Out(pk_Root)]
+
+/* Extract */
+rule Register_Entity_Root:
+let 
+    child_ID = ~ID
+    sk = skk(child_ID, ltk_Root)
+in
+    [!Root_Ltk($Root, ltk_Root), Fr(~ID)]
+  --[Entity_Registered(child_ID, %1), Entity_sk(sk)]-> 
+    [!Entity_skey(child_ID, sk), !Entity_PK(child_ID, %1), Out(~ID)]
+
+
+rule Register_Entity_Entity:
+let
+    child_ID = ~ID
+    sk = skk(child_ID, ltk_Root)
+in
+    [!Entity_PK(parent_ID, %n), Fr(~ID), !Root_Ltk($Root, ltk_Root)]
+  --[Entity_Registered(child_ID, %n %+ %1), Child_parent_action(child_ID, parent_ID)]->
+    [!Entity_skey(child_ID, sk), !Entity_PK(child_ID, %n %+ %1), !Child_parent(child_ID, parent_ID), !Entity_Root(child_ID, %n %+ %1), Out(child_ID)]
+
+/* Encryption */
+rule Enc:
+let 
+    m = diff('A', 'B')
+    c = encrypt(m, child_ID, pk_Root, ~r)
+in
+    [!Entity_PK(child_ID, %n), !Pk_Root($Root, pk_Root), Fr(~r)]
+    --[Encrypted(m), Enc_ID(child_ID)]->
+    [Out(c)]
+
+
+restriction OnlyOnce:
+    "All #i #j. OnlyOnce()@i & OnlyOnce()@j ==> #i = #j"
+end
+

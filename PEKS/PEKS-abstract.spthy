@@ -1,10 +1,10 @@
 theory PEKS
 begin
 
-functions: pub_key/1, peks/2, testt/3, trapdoor/2, true/0, false/0
+functions: pub_key/1, peks/3, testt/3, trapdoor/2, true/0, false/0
 
 equations:
-    testt(pub_key(ltk), peks(pub_key(ltk), W), trapdoor(ltk, W)) =  true
+    testt(pub_key(ltk), peks(pub_key(ltk), W, r), trapdoor(ltk, W)) =  true
     
 
 rule init_Receiver:
@@ -25,9 +25,9 @@ in
 
 rule PEKS:
 let
-    peks = peks(pk, W)
+    peks = peks(pk, W, ~r)
 in
-    [!Word(W, Receiver), !Pk(pk, Receiver)]
+    [!Word(W, Receiver), !Pk(pk, Receiver), Fr(~r)]
     --[PEKS(Receiver, W)]->
     [Out(peks)] 
 

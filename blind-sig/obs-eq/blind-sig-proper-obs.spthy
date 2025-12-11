@@ -1,0 +1,46 @@
+theory blind_sig_abs_prop_obs_eq
+
+begin
+
+functions: 
+          h1/1, 
+          blind/2, 
+          signn/2, 
+          unblind/2, 
+          verifyy/3, 
+          pkk/1, 
+          true/0
+
+rule Init_Signer:
+let
+    pk = pkk(~ltk)
+in
+    [Fr(~ltk)]
+  --[]->
+    [!Ltk(~ltk,$Signer), Out(pk), !Pk(pk, $Signer)]
+
+rule Blinding:
+let
+    m = diff('A','B')
+    M = blind(~r,h1(m))
+in
+    [Fr(~r)]
+  --[Blind(M), Blinded(m, h1(m))]->
+    [Out(M), !Issuer_r($Issuer, ~r), !Issuer_m($Issuer, m)]
+
+rule Signing:
+let
+    signed = signn(M,ltk)
+in
+    [In(M), !Ltk(ltk,Signer)]
+  --[Signed(M,Signer)]->
+    [Out(signed)]
+
+rule Unblinding: 
+let
+    signature = unblind(signed, r)
+in
+    [In(signed), !Issuer_r(Issuer, r)]
+  --[]->
+    [Out(signature), Signature(signature)]
+end

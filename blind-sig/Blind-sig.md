@@ -14,6 +14,16 @@ The first model not include signature witohut blinding, becouse at the time i pr
 ### improved model
 The second model is an improved version of the first. We used rule Oracle_unblind_sig and three private functions. The functions are able to recover values used to produce blinded signature: message, random value, long term key. They are used in the rule Oracle_unblinding_sig to produce not blinded signature. Nevertheless, the model correctly represents the protocol, as the aforementioned functions are private and the recovered values are not revealed. 
 
+### signature indistiguashability
+for both models we propose versions for proving that adversary can't distinguish functions output even if he knows two potential documents that might be signed (diff proving method). 
+
+#### first model
+In first model (without private functions and signature as value) we proved that adversary can't distinguish protocol's traces. To create this model we deleted rule verify, because we wanted to prove whether adversary can distinguish 2 unblinded signatures. 
+
+#### second model
+In second model (with private functions for composing the signature) We proved that adversary can't distinguish protocol's traces until unblinding rule. With unblinding rule, Tamarin found atack where adversary could trcik protocol in a way that he knew what document was signed and was result of unblind rule. Please note that after unblinding signature loses random component and this is why it was possible. Nevertheles It is possible to achieve protocol indistinguishability by using secure channel, so that adversary can't trick protocol.
+
+
 ### Lemmas
 for both models we provide following lemmas: 
 * __lemma executable__: there exist trace where steps leads to proper signing and verification
@@ -21,4 +31,4 @@ for both models we provide following lemmas:
     * first model doesn't allow adversary to evaluate message, so the lemma is trivial
     * second model also doesn't allow the adversary to evaluate the message, because we commented out an equation that enables it. We comented out the equation, because it causes non termination, it is probably possible to resolve issue by adding relevant sources lemmas.
 
-* __non_repudiation__: if signature under a message was verified using a party's public key, We can be sure that the party signed the message..
+* __non_repudiation__: if signature under a message was verified using a party's public key, We can be sure that the party signed the message.

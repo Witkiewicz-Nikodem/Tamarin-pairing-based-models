@@ -16,20 +16,20 @@ begin
 functions: pkk/1, enc/5, dec/3, skk/4
 equations: 
    ///////////////////////////////////
-   // policy 1: a1 or (a1 and a3)
-   // ltk 1
+   // policy 1: a1 or (a2 and a3)
+   // a1
    dec(pkk(msk),enc(pkk(msk), m, a1, a2, a3),skk(msk, a1, x1, x2)) = m, 
 
-   //  ltk2 and ltk3 
+   //  a2 and a3 
    dec(pkk(msk),enc(pkk(msk), m, a1, a2, a3),skk(msk, x, a2, a3)) = m,
 
    ///////////////////////////////////
-   // policy 2: ltk1 or ltk2
+   // policy 2: a1 or a2
    // ltk1 --> the same as in policy 1, we provide second equations to show that it is another policy but it is not necessary.
-   dec(pkk(msk),enc(pkk(msk), m, a1, a2, a3),skk(msk, a1, x, x)) = m,
+   dec(pkk(msk),enc(pkk(msk), m, a1, a2, a3),skk(msk, a1, x1, x2)) = m,
    
    // ltk2
-   dec(pkk(msk),enc(pkk(msk), m, a1, a2, a3),skk(msk, x, a2, x)) = m,
+   dec(pkk(msk),enc(pkk(msk), m, a1, a2, a3),skk(msk, x1, a2, x3)) = m,
 
 rule key_gen:
 let
@@ -62,7 +62,8 @@ in
   ,!Party($A23, SK_a23)
   ,!Party($A123, SK_a123)
   ,!PK(PK)
-  , MSK(~msk)
+  ,MSK(~msk)
+  ,Out(PK)
   ]
 
 rule enc:
